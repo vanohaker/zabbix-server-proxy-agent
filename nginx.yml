@@ -1,0 +1,94 @@
+---
+- name: install nginx
+  hosts: servers
+  remote_user: root
+
+  tasks:
+  - name: nginx install from Repository
+    dnf:
+      name: nginx
+      state: present
+
+  - name: Create directory
+    file:
+      path: '{{ item }}'
+      state: directory
+    with_items:
+      - /usr/share/nginx/{{ nginx_servername }}
+      # - /usr/share/nginx/{{ nginx_servername }}/html
+      - /etc/nginx/sites-available
+      - /etc/nginx/sites-enabled
+
+  - name: php install from Repository
+    dnf:
+      name:
+       - php
+       - php-fpm
+       - php-pgsql
+       - php-bcmath
+       - php-ctype
+       - php-xml
+       - php-xmlreader
+       - php-xmlwriter
+       - php-session
+      #  - php-net-socket
+       - php-mbstring
+       - php-gettext
+       - php-ldap
+       - php-json
+       - php-gd
+
+  - name: apply php.ini config
+    template:
+      src: php.ini.j2
+      dest: /etc/php.ini
+
+  - name: apply www.conf in php-fpm
+    template:
+      src: www.conf.j2
+      dest: /etc/php-fpm.d/www.conf
+    
+  # - name: debug1 {{ inventory_hostname }}
+  #   debug:
+  #     var: nginx_servername
+  - name: Apply nginx main template
+    template:
+      src: nginx.conf.j2
+      dest: /etc/nginx/nginx.conf
+
+  - name: Apply nginx default vhosts template
+    template:
+      src: default.conf.j2
+      dest: /etc/nginx/sites-available/default-http.conf
+
+  - name: Apply nginx zabbix vhosts template
+    template:
+      src: nginx-virtualhost.conf.j2
+      dest: /etc/nginx/sites-available/{{ inventory_hostname }}-http.conf
+
+  - name: Get all file name from /etc/nginx/sites-available
+    command: "ls /etc/nginx/sites-available"
+    register: sites_available_file
+
+  # - name: debug
+  #   debug:
+  #     var: sites_available_file
+
+  - name: Create symlink to sites-available files
+    file:
+      src: '/etc/nginx/sites-available/{{ item }}'
+      dest: '/etc/nginx/sites-enabled/{{ item }}'
+      state: link
+    with_items: '{{ sites_available_file.stdout_lines }}'
+
+  - name: Enable nginx service
+    systemd:
+      name: nginx
+      state: restarted
+      enabled: yes
+
+  - name: Enable nginx service
+    systemd:
+      name: php-fpm
+      state: restarted
+      enabled: yes

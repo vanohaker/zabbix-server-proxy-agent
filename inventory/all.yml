@@ -1,0 +1,13 @@
+all:
+  hosts:
+    zabbix.for-yt.ru:
+      ansible_hosts: 74.119.192.93
+      ansible_port: 22
+    zabbix1.for-yt.ru:
+      ansible_user: root
+      ansible_hosts: 192.168.10.225
+      ansible_port: 22
+  children:
+    servers:
+      hosts:
+        zabbix1.for-yt.ru:

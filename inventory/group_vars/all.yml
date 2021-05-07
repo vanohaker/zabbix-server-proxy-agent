@@ -1,0 +1,12 @@
+---
+selinux: 'disabled'
+version: '5.2.6'
+zabbix_dbpassword: 'dPkMFCDXr5JKXju7'
+nginx_servername: '{{ inventory_hostname|lower }}'
+web_user: 'nginx'
+
+# php settings
+date_timezone: 'Europe/Moscow'
+max_execution_time: '300'
+post_max_size: '16M'
+max_input_time: '300'

@@ -1,0 +1,10 @@
+---
+- name: Zabbix agent Setup
+  hosts:
+  - server
+  - proxy
+  - agent
+  become: yes
+
+  tasks:
+    - name: copy systemd file for zabbix agent

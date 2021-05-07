@@ -1,0 +1,17 @@
+---
+- name: Selinux setup
+  hosts: all
+  become: yes
+  vars:
+    zabbix_source_dir: /opt/zabbix-{{ version }}
+
+  tasks:
+    - name: Selinux
+      block:
+        - name: Disable Selinux in /etc/selinux/config
+          selinux:
+            state: disabled
+
+        - name: Disable selinux in setenforce
+          command: setenforce 0
+          ignore_errors: yes

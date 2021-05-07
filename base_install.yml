@@ -1,0 +1,96 @@
+---
+- name: Base System Setup
+  hosts: all
+  become: yes
+  vars:
+    zabbix_source_dir: /opt/zabbix-{{ version }}
+
+  tasks:
+    - name:
+      block:
+        - name: Add timescaledb.repo
+          template:
+            src: timescale_timescaledb.repo.j2
+            dest: /etc/yum.repos.d/timescale_timescaledb.repo
+        
+        - name: Add postgress repo 
+          dnf:
+            name: 'https://download.postgresql.org/pub/repos/yum/reporpms/EL-8-x86_64/pgdg-redhat-repo-latest.noarch.rpm'
+            state: present
+
+        - name: Update system packages
+          yum:
+            name: '*'
+            state: latest
+
+        - name: disable postgresql module
+          shell: >
+            dnf -qy module disable postgresql
+
+        - name: Install requarements
+          yum:
+            name:
+            - nano
+            - bash-completion
+            - wget
+            - tar
+            - chrony
+            - net-tools
+            state: present
+
+        - name: Install the 'Development tools' package group and dependensis
+          dnf:
+            name: 
+            - '@Development tools'
+            - 'epel-release'
+            - 'postgresql12-devel'
+            - 'libxml2-devel'
+            - 'libssh2-devel'
+            - 'libevent-devel'
+            - 'pcre-devel'
+            - 'net-snmp'
+            - 'net-snmp-devel'
+            - 'dnf-plugins-core'
+            - 'OpenIPMI-devel'
+            - 'openldap-devel'
+            - 'libcurl-devel'
+            - 'postgresql12-server'
+            - 'postgresql12'
+            - 'timescaledb-postgresql-12'
+            - 'glibc-langpack-ru'
+            state: present
+          
+        - name: Install python
+          dnf:
+            name:
+            - 'python3'
+            - 'python3-pip'
+
+        - name: install python modules
+          pip:
+            name: pexpect
+
+        - name: set timezone Europe/Moscow
+          shell: >
+            timedatectl set-timezone Europe/Moscow
+          
+        - name: start chrony
+          systemd:
+            name: chronyd
+            state: restarted
+            enabled: yes
+
+        - name: add group zabbix
+          group:
+            name: zabbix
+            state: present
+          register: zabbix_group
+
+        - name: add user zabbix
+          user:
+            name: zabbix
+            shell: /sbin/nologin
+            home: /usr/lib/zabbix
+            comment: Zabbix Monitoring System
+            group: zabbix
+          when: zabbix_group['state'] == 'present'

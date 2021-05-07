@@ -1,0 +1,28 @@
+---
+- name: Firewall setup
+  hosts: all
+  become: yes
+
+  tasks:
+
+  - name: Setup firewall
+    block:
+      - name: allow 80/tcp,443/tcp,10051/tcp,10050/tcp,10050/udp,10051/udp
+        firewalld:
+          port: '{{ item }}'
+          permanent: yes
+          state: enabled
+        with_items:
+          - 80/tcp
+          - 443/tcp
+          - 10051/tcp
+          - 10050/tcp
+          - 10050/udp
+          - 10051/udp
+
+      - name: reload service firewalld
+        systemd:
+          name: firewalld
+          state: reloaded
+          
+    when: inventory_hostname in groups['servers']

@@ -1,0 +1,18 @@
+server {
+        listen       80;
+        listen       [::]:80;
+        server_name  {{ nginx_servername }};
+        root         /usr/share/nginx/{{ nginx_servername }}/html;
+
+        # Load configuration files for the default server block.
+        include /etc/nginx/default.d/*.conf;
+
+        location ~ \.php$ {
+            set $root_path /usr/share/nginx/{{ nginx_servername }}/html;
+            fastcgi_pass unix:/run/php-fpm/www.sock;
+            fastcgi_index index.php;
+            fastcgi_param SCRIPT_FILENAME $root_path$fastcgi_script_name;
+            include fastcgi_params;
+            fastcgi_param DOCUMENT_ROOT $root_path;
+        }
+    }

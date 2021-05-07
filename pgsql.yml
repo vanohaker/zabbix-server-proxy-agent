@@ -1,0 +1,85 @@
+---
+- name: install zabbix-server
+  hosts: servers
+  remote_user: root
+
+  tasks:
+  - name: Install postgresql server
+    block:
+    - name: stop postgresql-12 service
+      systemd:
+        name: postgresql-12
+        state: stopped
+      ignore_errors: yes
+
+    - name: /var/lib/pgsql/12/data exist?
+      file:
+        path: /var/lib/pgsql/12/data
+      register: pgsql_data
+
+    - name: remove pgsql data
+      file:
+        path: /var/lib/pgsql/12/data
+        state: absent
+      when: pgsql_data
+
+    - name: init postgresql-12
+      command: /usr/pgsql-12/bin/postgresql-12-setup initdb
+      ignore_errors: yes
+
+    - name: tune timescaledb
+      expect:
+        command: timescaledb-tune --pg-config=/usr/pgsql-12/bin/pg_config
+        responses:
+          (?i).*(Is this correct\?).*:
+           - Y 
+          (?i).*(Is this okay?).*:
+           - Y
+           - Y
+           - Y
+           - Y
+           - Y
+          (?i).*(Tune memory/parallelism/WAL and other settings\?).*:
+           - Y
+    - name: apply pg_hda config
+      template:
+        src: pg_hba.conf.j2
+        dest: /var/lib/pgsql/12/data/pg_hba.conf
+
+    - name: start postgresql-12 service
+      systemd:
+        name: postgresql-12
+        state: restarted
+        enabled: yes
+  
+  - name: setup pg users and dbs
+    block:
+
+    - name: add zabbix user to postgresql
+      expect:
+        command: sudo -u postgres createuser --pwprompt zabbix
+        responses:
+          (?i).*(Enter password for new role)(.*):
+           - '{{ zabbix_dbpassword }}'
+          (?i).*(Enter it again)(.*):
+           - '{{ zabbix_dbpassword }}'
+
+    - name: create database for zabbix
+      shell: >
+        sudo -u postgres createdb -O zabbix -E Unicode -T template0 zabbix
+
+    - name: import postgresql sql files
+      shell: >
+        {{ item }}
+      with_items:
+       - cat /opt/zabbix-{{ version }}/database/postgresql/schema.sql | sudo -u zabbix psql zabbix
+       - cat /opt/zabbix-{{ version }}/database/postgresql/images.sql | sudo -u zabbix psql zabbix
+       - cat /opt/zabbix-{{ version }}/database/postgresql/data.sql | sudo -u zabbix psql zabbix
+
+    - name: CREATE EXTENSION timescaledb
+      shell: >
+        echo "CREATE EXTENSION IF NOT EXISTS timescaledb CASCADE;" | sudo -u postgres psql zabbix
+
+    - name: add timescaledb base
+      shell: >
+        cat /opt/zabbix-{{ version }}/database/postgresql/timescaledb.sql | sudo -u zabbix psql zabbix

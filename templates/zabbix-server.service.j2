@@ -1,0 +1,14 @@
+[Unit]
+Description=Zabbix Server
+After=syslog.target network.target mariadb.service
+ 
+[Service]
+Type=oneshot
+User=zabbix
+ExecStart=/usr/local/sbin/zabbix_server -c /usr/local/etc/zabbix_server.conf
+ExecReload=/usr/local/sbin/zabbix_server -c /usr/local/etc/zabbix_server.conf -R config_cache_reload
+RemainAfterExit=yes
+PIDFile=/var/run/zabbix/zabbix_server.pid
+ 
+[Install]
+WantedBy=multi-user.target

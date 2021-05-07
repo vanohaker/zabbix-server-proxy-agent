@@ -1,0 +1,173 @@
+---
+- name: install zabbix-server
+  hosts: servers
+  remote_user: root
+
+  tasks:
+
+  - name: Folder zabbix-{{ version }} exist?
+    stat:
+      path: /opt/zabbix-{{ version }}
+    register: zabbix_source_folder
+  
+  - name: Remove old zabbix-{{ version }} sources folder
+    file:
+      path: /opt/zabbix-{{ version }}
+      state: absent
+    when: zabbix_source_folder['stat']['exists'] == true
+
+  - name: Folder zabbix-{{ version }} ui exist?
+    stat:
+      path: /usr/share/nginx/{{ nginx_servername }}/html
+    register: zabbix_ui_folder
+  
+  - name: Remove old zabbix-{{ version }} ui
+    file:
+      path: /usr/share/nginx/{{ nginx_servername }}/html
+      state: absent
+    when: zabbix_ui_folder['stat']['exists'] == true
+
+  - name: Create directory
+    file:
+      path: '{{ item }}'
+      state: directory
+    with_items:
+      - /usr/share/nginx/{{ nginx_servername }}/html
+    when: zabbix_ui_folder['stat']['exists'] == true
+
+  # - name: debug1
+  #   debug:
+  #     var: zabbix_source_folder['stat']['exists']
+
+  - name: File zabbix-{{ version }} exist?
+    stat:
+      path: /opt/zabbix-{{ version }}.tar.gz
+    register: zabbix_source_tar
+  
+  - name: Remove old zabbix-{{ version }} sources folder
+    file:
+      path: /opt/zabbix-{{ version }}.tar.gz
+      state: absent
+    when: zabbix_source_tar['stat']['exists'] == true
+
+  - name: Enable PowerTools Repository
+    shell: >
+      dnf config-manager --set-enabled powertools
+
+  - name: Download zabbix source
+    get_url:
+      url: https://cdn.zabbix.com/zabbix/sources/stable/5.2/zabbix-{{ version }}.tar.gz
+      dest: /opt
+      mode: 0644
+
+  - name: Create zabbix-{{ version }} dir
+    file:
+      path: /opt/zabbix-{{ version }}
+      state: directory
+
+  - name: Extract zabbix-{{ version }} source
+    unarchive:
+      remote_src: yes
+      src: /opt/zabbix-{{ version }}.tar.gz
+      dest: /opt
+
+  - name: Configure zabbix-{{ version }} sources
+    command:
+    args:
+      chdir: /opt/zabbix-{{ version }}
+      argv:
+        - './configure'
+        - '--enable-server'
+        - '--enable-agent'
+        - '--enable-ipv6'
+        # - '--with-postgresql=yes'
+        - '--with-postgresql=/usr/pgsql-12/bin/pg_config'
+        - '--with-net-snmp=yes'
+        - '--with-libevent'
+        - '--with-openipmi'
+        - '--with-zlib'
+        - '--with-libpthread=yes'
+        - '--with-libxml2=yes'
+        - '--with-ssh2'
+        - '--with-openssl'
+        - '--with-ldap'
+        - '--with-libcurl'
+        - '--with-libpcre'
+        - '--with-iconv'
+  
+  - name: compile locale
+    command: /opt/zabbix-{{ version }}/ui/locale/make_mo.sh
+
+  # - name: Create dbschema
+  #   make:
+  #     chdir: /opt/zabbix-{{ version }}
+  #     make: make
+  #     target: dbschema
+
+  - name: Copy UI to html
+    copy:
+      remote_src: yes
+      src: /opt/zabbix-{{ version }}/ui/
+      dest: /usr/share/nginx/{{ nginx_servername }}/html/
+      owner: nginx
+      group: nginx
+      directory_mode:
+
+  - name: Install zabbix-{{ version }} sources
+    make:
+      chdir: /opt/zabbix-{{ version }}
+      target: install
+    become: yes
+
+  - name: copy zabbix server config
+    template:
+      src: zabbix_server.conf.j2
+      dest: /usr/local/etc/zabbix_server.conf
+
+  - name: copy zabbix ui config
+    template:
+      src: zabbix.conf.php.j2
+      dest: /usr/share/nginx/zabbix1.for-yt.ru/html/conf/zabbix.conf.php
+      group: nginx
+      owner: nginx
+      mode: 0600
+
+  - name: copy zabbix systemd file for zabbix-server
+    template:
+      src: zabbix-server.service.j2
+      dest: /usr/lib/systemd/system/systemd-zabbix-server.service
+      mode: 0644
+
+  - name: copy zabbix systemd file for zabbix-agent
+    template:
+      src: zabbix-agent.service.j2
+      dest: /usr/lib/systemd/system/systemd-zabbix-agent.service
+      mode: 0644
+
+  - name: create symlink to systemd-zabbix-server.service
+    file:
+      remote_src: yes
+      src: /usr/lib/systemd/system/systemd-zabbix-server.service
+      dest: /etc/systemd/system/zabbix-server.service
+      state: link
+      mode: 0777
+  
+  - name: create symlink to systemd-zabbix-agent.service
+    file:
+      remote_src: yes
+      src: /usr/lib/systemd/system/systemd-zabbix-agent.service
+      dest: /etc/systemd/system/zabbix-agent.service
+      state: link
+      mode: 0777
+
+  - name: start zabbix server
+    systemd:
+      name: zabbix-server
+      enabled: yes
+      state: restarted
+
+  - name: start zabbix agent
+    systemd:
+      name: zabbix-agent
+      enabled: yes
+      state: restarted

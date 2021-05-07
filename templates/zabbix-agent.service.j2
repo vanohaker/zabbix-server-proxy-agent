@@ -1,0 +1,15 @@
+[Unit]
+Description=Zabbix Agent Daemon
+After=syslog.target network.target
+
+[Service]
+Type=forking
+ExecStart=/usr/local/sbin/zabbix_agentd -c /usr/local/etc/zabbix_agentd.conf
+ExecReload=/usr/local/sbin/zabbix_agentd -c /usr/local/etc/zabbix_agentd.conf -R config_cache_reload
+PIDFile=/tmp/zabbix_agentd.pid
+
+User=zabbix
+Group=zabbix
+
+[Install]
+WantedBy=multi-user.target
