@@ -2,6 +2,6 @@
 - import_playbook: selinux.yml
 - import_playbook: base_install.yml
 - import_playbook: firewalld.yml
-- import_playbook: zabbix_server.yml
 - import_playbook: nginx.yml
+- import_playbook: zabbix_server.yml
 - import_playbook: pgsql.yml

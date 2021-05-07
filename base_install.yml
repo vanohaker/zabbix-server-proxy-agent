@@ -38,11 +38,19 @@
             - net-tools
             state: present
 
+        - name: Enable repos
+          dnf:
+            name:
+            - 'epel-release'
+
+        - name: Enable PowerTools Repository
+          shell: >
+            dnf config-manager --set-enabled powertools
+
         - name: Install the 'Development tools' package group and dependensis
           dnf:
             name: 
             - '@Development tools'
-            - 'epel-release'
             - 'postgresql12-devel'
             - 'libxml2-devel'
             - 'libssh2-devel'

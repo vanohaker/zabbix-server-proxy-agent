@@ -1,5 +1,5 @@
 ---
-- name: Zabbix agent Setup
+- name: install zabbix-agent
   hosts:
   - server
   - proxy

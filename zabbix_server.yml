@@ -33,7 +33,6 @@
       state: directory
     with_items:
       - /usr/share/nginx/{{ nginx_servername }}/html
-    when: zabbix_ui_folder['stat']['exists'] == true
 
   # - name: debug1
   #   debug:
@@ -49,10 +48,6 @@
       path: /opt/zabbix-{{ version }}.tar.gz
       state: absent
     when: zabbix_source_tar['stat']['exists'] == true
-
-  - name: Enable PowerTools Repository
-    shell: >
-      dnf config-manager --set-enabled powertools
 
   - name: Download zabbix source
     get_url:

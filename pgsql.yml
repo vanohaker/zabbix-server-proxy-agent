@@ -1,5 +1,5 @@
 ---
-- name: install zabbix-server
+- name: install postgress
   hosts: servers
   remote_user: root
 
